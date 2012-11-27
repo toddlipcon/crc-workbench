@@ -4,8 +4,8 @@
 
 #include "bulk_crc32.h"
 
-#define PACKET_SIZE (4*1024*1024)
-#define CHUNK_SIZE PACKET_SIZE/6
+#define PACKET_SIZE (64*1024)
+#define CHUNK_SIZE 512
 #define CRC_ALGO CRC32C_POLYNOMIAL
 //#define CRC_ALGO CRC32_ZLIB_POLYNOMIAL
 
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   bulk_calculate_crc(buf, PACKET_SIZE, sums, CRC_ALGO, CHUNK_SIZE);
 
   uint64_t tc_before = rdtsc();  
-  for (i = 0; i < 50000; i++) {
+  for (i = 0; i < 500000; i++) {
     int rc = bulk_verify_crc(buf, PACKET_SIZE, sums, CRC_ALGO, CHUNK_SIZE, NULL);
     if (rc != 0) {
       fprintf(stderr, "failed!\n");
