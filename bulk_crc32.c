@@ -527,6 +527,7 @@ static void pipelined_crc32c(uint32_t *crc1, uint32_t *crc2, uint32_t *crc3,
   uint64_t c3 = *crc3;
   uint64_t *data = (uint64_t*)p_buf;
   int counter = block_size / sizeof(uint64_t);
+  int foursomes = counter / 4;
   int remainder = block_size % sizeof(uint64_t);
   uint8_t *bdata;
 
@@ -542,13 +543,46 @@ static void pipelined_crc32c(uint32_t *crc1, uint32_t *crc2, uint32_t *crc3,
   switch (num_blocks) {
     case 3:
       /* Do three blocks */
+      while (likely(foursomes)) {
+        __asm__ __volatile__(
+        "crc32q (%7), %0;\n\t"
+        "crc32q (%7,%6,1), %1;\n\t"
+        "crc32q (%7,%6,2), %2;\n\t"
+         : "=r"(c1), "=r"(c2), "=r"(c3)
+         : "0"(c1), "1"(c2), "2"(c3), "r"(block_size), "r"(data)
+        );
+        __asm__ __volatile__(
+        "crc32q 8(%7), %0;\n\t"
+        "crc32q 8(%7,%6,1), %1;\n\t"
+        "crc32q 8(%7,%6,2), %2;\n\t"
+         : "=r"(c1), "=r"(c2), "=r"(c3)
+         : "0"(c1), "1"(c2), "2"(c3), "r"(block_size), "r"(data)
+        );
+        __asm__ __volatile__(
+        "crc32q 16(%7), %0;\n\t"
+        "crc32q 16(%7,%6,1), %1;\n\t"
+        "crc32q 16(%7,%6,2), %2;\n\t"
+         : "=r"(c1), "=r"(c2), "=r"(c3)
+         : "0"(c1), "1"(c2), "2"(c3), "r"(block_size), "r"(data)
+        );
+        __asm__ __volatile__(
+        "crc32q 24(%7), %0;\n\t"
+        "crc32q 24(%7,%6,1), %1;\n\t"
+        "crc32q 24(%7,%6,2), %2;\n\t"
+         : "=r"(c1), "=r"(c2), "=r"(c3)
+         : "0"(c1), "1"(c2), "2"(c3), "r"(block_size), "r"(data)
+        );
+        data += 4;
+        foursomes--;
+      }
+      counter = counter % 4;
       while (likely(counter)) {
         __asm__ __volatile__(
         "crc32q (%7), %0;\n\t"
         "crc32q (%7,%6,1), %1;\n\t"
         "crc32q (%7,%6,2), %2;\n\t"
          : "=r"(c1), "=r"(c2), "=r"(c3)
-         : "r"(c1), "r"(c2), "r"(c3), "r"(block_size), "r"(data)
+         : "0"(c1), "1"(c2), "2"(c3), "r"(block_size), "r"(data)
         );
         data++;
         counter--;
